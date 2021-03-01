@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/fatih/color"
-	"net/http"
 )
 
 func main() {
@@ -20,19 +18,4 @@ func main() {
 func PrintWelcomeScreen() {
 	fmt.Println("Welcome to the Crypto Currency Tracker")
 	fmt.Println("--------------------------------------")
-	//	color.Cyan("This is Cyan")
-	//	color.Red("Red is dead")
-
-}
-
-func GetCryptoPrices() {
-	// get the current btc price here
-	// https://api.coingecko.com/api/v3/ping
-	var url = "https://api.coingecko.com/api/v3/ping"
-	response, err := http.Get(url)
-	if err != nil {
-		color.Red("Error getting info from ", url)
-	} else {
-		fmt.Println("respone = ", response)
-	}
 }
