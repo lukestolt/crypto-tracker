@@ -5,70 +5,61 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/fatih/color"
 )
 
-type CoinList struct {
-	Bitcoin  Bitcoin
-	Ethereum Ethereum
-}
-
-type Bitcoin struct {
-	Bitcoin CoinValue
-}
-
-type Ethereum struct {
-	Ethereum CoinValue
-}
-
 type CoinValue struct {
-	Usd            int32
+	Usd            float32
 	Usd_Market_Cap float32
 }
 
-func GetCryptoPrices() {
-	parameters := make(map[string]string)
-	parameters["ids"] = `bitcoin%2Cethereum`
-	parameters["vs_currencies"] = "usd"
-	parameters["include_market_cap"] = "true"
-	// curl -X GET "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_market_cap=true"
-	// curl -X GET "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_market_cap=true
-	const coinPriceUrl = "https://api.coingecko.com/api/v3/simple/price?"
-	url := BuildApiUrl(coinPriceUrl, parameters)
+func GetCryptoUpdates() {
+	tick := time.NewTicker(time.Second * 3)
+	go GetCryptoPrices(tick)
 
-	response, err := http.Get(url)
-	if err != nil {
-		color.Red("Error getting info from ", url)
-	} else {
-		// https://stackoverflow.com/questions/17452722/how-to-get-the-key-value-from-a-json-string-in-go
-		defer response.Body.Close()
-		body, err := ioutil.ReadAll(response.Body)
-		if err == nil {
-			c := make(map[string]json.RawMessage)
-			err := json.Unmarshal(body, &c)
-			if err != nil {
-				panic(err)
-			}
+	select {}
+}
 
-			keys := make([]string, len(c))
-			i := 0
-			for keyValue, _ := range c {
-				keys[i] = keyValue
-				i++
-			}
+func GetCryptoPrices(ticker *time.Ticker) {
+	for range ticker.C {
+		parameters := make(map[string]string)
+		parameters["ids"] = `bitcoin%2Cethereum`
+		parameters["vs_currencies"] = "usd"
+		parameters["include_market_cap"] = "true"
+		// max 100 calls per minute in the api
+		// curl -X GET "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_market_cap=true
+		const coinPriceUrl = "https://api.coingecko.com/api/v3/simple/price?"
+		url := BuildApiUrl(coinPriceUrl, parameters)
 
-			fmt.Printf("%#v\n", keys)
-
-			// var cValue CoinList
-			// jsonError := json.Unmarshal(body, &cValue)
-			// if jsonError != nil {
-			// 	color.Red(jsonError.Error())
-			// fmt.Println(cValue)
-			//color.HiGreen(GetCoinValue(cValue))
-			// fmt.Println(string(body)) // remember need to wrap in string otherwise its byte[]
+		response, err := http.Get(url)
+		if err != nil {
+			color.Red("Error getting info from ", url)
 		} else {
-			color.Red("Error reading the body")
+			// https://stackoverflow.com/questions/17452722/how-to-get-the-key-value-from-a-json-string-in-go
+			defer response.Body.Close()
+			body, err := ioutil.ReadAll(response.Body)
+			if err == nil {
+				jsonData := make(map[string]json.RawMessage)
+				err := json.Unmarshal(body, &jsonData)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Println(string(body))
+				coins := make(map[string]CoinValue)
+				i := 0
+				for keyValue, value := range jsonData {
+					var coinValue = new(CoinValue)
+					json.Unmarshal(value, coinValue)
+					coins[keyValue] = *coinValue
+					// fmt.Println(string(value))
+					i++
+				}
+				PrintAllCoins(coins)
+			} else {
+				color.Red("Error reading the body")
+			}
 		}
 	}
 }
@@ -84,7 +75,13 @@ func BuildApiUrl(baseUrl string, parameters map[string]string) string {
 	return (baseUrl + parameterString)
 }
 
-func GetCoinValue(coin Bitcoin) string {
-	return fmt.Sprintf("USD: $%d Market Cap USD: $%.2f", coin.Bitcoin.Usd, coin.Bitcoin.Usd_Market_Cap)
+func PrintAllCoins(coins map[string]CoinValue) {
+	for key := range coins {
+		color.HiGreen(key + "\n")
+		color.HiMagenta(GetCoinValue(coins[key]))
+	}
+}
 
+func GetCoinValue(coin CoinValue) string {
+	return fmt.Sprintf("USD: $%.2f Market Cap USD: $%.2f", coin.Usd, coin.Usd_Market_Cap)
 }

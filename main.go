@@ -12,7 +12,7 @@ func main() {
 	// run a service that logs this information up to a certain point
 	// this service run along the main service to get the crypto prices
 	PrintWelcomeScreen()
-	GetCryptoPrices()
+	GetCryptoUpdates()
 }
 
 func PrintWelcomeScreen() {
